@@ -7,7 +7,7 @@ from qiskit import QuantumCircuit, QuantumRegister
 from qiskit.quantum_info import Statevector
 
 from quantum_state_prep import build_oracle
-from quantum_state_prep import compute_expected_state, optimal_iterations, prepare_state, state_fidelity
+from quantum_state_prep import compute_expected_state, compute_target_state, optimal_iterations, prepare_state, state_fidelity
 
 
 FIDELITY_THRESHOLD = 0.99
@@ -43,14 +43,16 @@ def check_state_prep(n, m, a, p, label=""):
     """Prepare state and check fidelity against expected."""
     result = prepare_state(n, m, a, p)
     expected = compute_expected_state(n, m, a, p)
+    target = compute_target_state(n, m, a, p)
     fid = state_fidelity(result, expected)
+    target_fid = state_fidelity(result, target)
     ok = fid >= FIDELITY_THRESHOLD
     if not ok:
         print(f"  FAIL {label} fidelity={fid:.6f} (threshold={FIDELITY_THRESHOLD})")
         print(f"    a={a}, p={p}")
         print(f"    result  = {np.round(result, 4)}")
         print(f"    expected= {np.round(expected, 4)}")
-    return ok, fid
+    return ok, fid, target_fid
 
 
 #oracle tests
@@ -89,6 +91,7 @@ def test_small_exhaustive():
     n, m = 2, 3
     ok = True
     count = 0
+    target_fids = []
 
     test_cases = [
         ([1, 2, 3, 4], [0, 0, 0, 0], "increasing amp, zero phase"),
@@ -100,12 +103,14 @@ def test_small_exhaustive():
 
     t0 = time.time()
     for a, p, label in test_cases:
-        passed, fid = check_state_prep(n, m, a, p, label)
+        passed, fid, tfid = check_state_prep(n, m, a, p, label)
         ok &= passed
         count += 1
+        target_fids.append(tfid)
 
     elapsed = time.time() - t0
-    print(f"  {count} cases in {elapsed:.2f}s ... {'PASS' if ok else 'FAIL'}")
+    avg_tfid = np.mean(target_fids)
+    print(f"  {count} cases in {elapsed:.2f}s ... {'PASS' if ok else 'FAIL'}  (avg target fidelity={avg_tfid:.6f})")
     return ok
 
 
@@ -113,6 +118,7 @@ def test_small_exhaustive():
 def test_boundary():
     print("=== Boundary Tests ===")
     ok = True
+    target_fids = []
 
     #Single non-zero amplitude
     n, m = 2, 3
@@ -120,24 +126,29 @@ def test_boundary():
         a = [0] * 4
         a[idx] = 3
         p = [0] * 4
-        passed, fid = check_state_prep(n, m, a, p, f"single a[{idx}]=3")
+        passed, fid, tfid = check_state_prep(n, m, a, p, f"single a[{idx}]=3")
         ok &= passed
+        target_fids.append(tfid)
 
     #All equal amplitudes
-    passed, fid = check_state_prep(2, 3, [2, 2, 2, 2], [0, 0, 0, 0], "uniform amp")
+    passed, fid, tfid = check_state_prep(2, 3, [2, 2, 2, 2], [0, 0, 0, 0], "uniform amp")
     ok &= passed
+    target_fids.append(tfid)
 
     #Max valid amplitude (2^(m-1))
-    passed, fid = check_state_prep(2, 3, [4, 4, 4, 4], [0, 0, 0, 0], "max amp")
+    passed, fid, tfid = check_state_prep(2, 3, [4, 4, 4, 4], [0, 0, 0, 0], "max amp")
     ok &= passed
+    target_fids.append(tfid)
 
     # Single non-zero with phase
     a = [0, 0, 3, 0]
     p = [0, 0, 5, 0]
-    passed, fid = check_state_prep(2, 3, a, p, "single with phase")
+    passed, fid, tfid = check_state_prep(2, 3, a, p, "single with phase")
     ok &= passed
+    target_fids.append(tfid)
 
-    print(f"  {'PASS' if ok else 'FAIL'}")
+    avg_tfid = np.mean(target_fids)
+    print(f"  {'PASS' if ok else 'FAIL'}  (avg target fidelity={avg_tfid:.6f})")
     return ok
 
 
@@ -145,6 +156,7 @@ def test_boundary():
 def test_phase_only():
     print("=== Phase-Only Tests (uniform amplitude) ===")
     ok = True
+    target_fids = []
 
     #n=2, m=3: uniform amp, different phase patterns
     n, m = 2, 3
@@ -159,11 +171,13 @@ def test_phase_only():
 
     t0 = time.time()
     for p in phase_patterns:
-        passed, fid = check_state_prep(n, m, amp, p, f"phases={p}")
+        passed, fid, tfid = check_state_prep(n, m, amp, p, f"phases={p}")
         ok &= passed
+        target_fids.append(tfid)
 
     elapsed = time.time() - t0
-    print(f"  {len(phase_patterns)} cases in {elapsed:.2f}s ... {'PASS' if ok else 'FAIL'}")
+    avg_tfid = np.mean(target_fids)
+    print(f"  {len(phase_patterns)} cases in {elapsed:.2f}s ... {'PASS' if ok else 'FAIL'}  (avg target fidelity={avg_tfid:.6f})")
     return ok
 
 
@@ -171,6 +185,7 @@ def test_phase_only():
 def test_amplitude_only():
     print("=== Amplitude-Only Tests (zero phase) ===")
     ok = True
+    target_fids = []
 
     n, m = 2, 3
     zero_p = [0, 0, 0, 0]
@@ -184,11 +199,13 @@ def test_amplitude_only():
 
     t0 = time.time()
     for a in amp_patterns:
-        passed, fid = check_state_prep(n, m, a, zero_p, f"amps={a}")
+        passed, fid, tfid = check_state_prep(n, m, a, zero_p, f"amps={a}")
         ok &= passed
+        target_fids.append(tfid)
 
     elapsed = time.time() - t0
-    print(f"  {len(amp_patterns)} cases in {elapsed:.2f}s ... {'PASS' if ok else 'FAIL'}")
+    avg_tfid = np.mean(target_fids)
+    print(f"  {len(amp_patterns)} cases in {elapsed:.2f}s ... {'PASS' if ok else 'FAIL'}  (avg target fidelity={avg_tfid:.6f})")
     return ok
 
 
@@ -210,19 +227,22 @@ def test_random():
         max_p = 2**m - 1
         t0 = time.time()
         passed_count = 0
+        target_fids = []
 
         for trial in range(k):
             a = [rng.randint(1, max_a) for _ in range(2**n)]
             p = [rng.randint(0, max_p) for _ in range(2**n)]
-            passed, fid = check_state_prep(n, m, a, p, f"n={n} m={m} trial={trial}")
+            passed, fid, tfid = check_state_prep(n, m, a, p, f"n={n} m={m} trial={trial}")
             if passed:
                 passed_count += 1
             ok &= passed
+            target_fids.append(tfid)
 
         elapsed = time.time() - t0
         avg = elapsed / k
+        avg_tfid = np.mean(target_fids)
         status = "PASS" if passed_count == k else "FAIL"
-        print(f"  n={n} m={m} ({k} trials): {status}  ({elapsed:.2f}s total, {avg:.3f}s/trial)")
+        print(f"  n={n} m={m} ({k} trials): {status}  ({elapsed:.2f}s total, {avg:.3f}s/trial, avg target fidelity={avg_tfid:.6f})")
 
     return ok
 

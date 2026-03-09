@@ -18,8 +18,6 @@ def build_oracle(n, m, values):
 
     for addr in range(2**n):
         v = values[addr]
-        if v == 0:
-            continue
 
         #Flip x qubits where addr bit is 0, so MCX activates on addr
         for k in range(n):
@@ -29,14 +27,9 @@ def build_oracle(n, m, values):
         #XOR each set bit of v into val_reg
         for j in range(m):
             if (v >> j) & 1:
-                if n == 1:
-                    qc.cx(x_reg[0], val_reg[j])
-                elif n == 2:
-                    qc.ccx(x_reg[0], x_reg[1], val_reg[j])
-                else:
-                    qc.mcx(list(x_reg), val_reg[j])
+                qc.mcx(list(x_reg), val_reg[j])
 
-        # Undo the X flips
+        #Undo the X flips
         for k in range(n):
             if not ((addr >> k) & 1):
                 qc.x(x_reg[k])
@@ -61,25 +54,22 @@ def build_state_prep_circuit(n, m, oracle_a, oracle_p):
     flag = QuantumRegister(1, "f")
     qc = QuantumCircuit(x_reg, val_reg, flag, name="A")
 
-    #oracle qubits → x_reg + val_reg
-    qubit_map = list(range(n + m))  
-
     #Uniform superposition
     qc.h(x_reg)
 
     #Amplitude loading
-    qc.compose(oracle_a, qubits=qubit_map, inplace=True)
+    qc.compose(oracle_a, inplace=True)
     for j in range(m):
         angle = 2**(j + 1) * np.pi / 2**m
         qc.cry(angle, val_reg[j], flag[0])
-    qc.compose(oracle_a.inverse(), qubits=qubit_map, inplace=True)
+    qc.compose(oracle_a.inverse(), inplace=True)
 
     #Phase loading
-    qc.compose(oracle_p, qubits=qubit_map, inplace=True)
+    qc.compose(oracle_p, inplace=True)
     for j in range(m):
         angle = 2 * np.pi * 2**j / 2**m
         qc.p(angle, val_reg[j])
-    qc.compose(oracle_p.inverse(), qubits=qubit_map, inplace=True)
+    qc.compose(oracle_p.inverse(), inplace=True)
 
     return qc
 
@@ -148,6 +138,23 @@ def compute_expected_state(n, m, a, p):
     return state
 
 
+def compute_target_state(n, m, a, p):
+    """
+    Classically compute the assignment's target state (linear encoding).
+
+    Amplitudes: a_x
+    Phases:     e^{i·2π·p_x / 2^m}
+    """
+    state = np.zeros(2**n, dtype=complex)
+    for x in range(2**n):
+        phase = np.exp(1j * 2 * np.pi * p[x] / 2**m)
+        state[x] = a[x] * phase
+    norm = np.linalg.norm(state)
+    if norm > 1e-10:
+        state /= norm
+    return state
+
+
 def state_fidelity(state1, state2):
     """Compute fidelity |⟨ψ1|ψ2⟩|² between two normalized states."""
     return abs(np.dot(state1.conj(), state2))**2
@@ -181,21 +188,3 @@ def prepare_state(n, m, a, p):
         state /= norm
 
     return state
-
-
-# if __name__ == "__main__":
-#     # Quick demo: n=2, m=3, uniform amplitudes with varying phases
-#     n, m = 2, 3
-#     a = [2, 2, 2, 2]
-#     p = [0, 2, 4, 6]
-
-#     result = prepare_state(n, m, a, p)
-#     expected = compute_expected_state(n, m, a, p)
-#     fid = state_fidelity(result, expected)
-
-#     print(f"n={n}, m={m}")
-#     print(f"a = {a}")
-#     print(f"p = {p}")
-#     print(f"Prepared:  {np.round(result, 4)}")
-#     print(f"Expected:  {np.round(expected, 4)}")
-#     print(f"Fidelity:  {fid:.6f}")
