@@ -6,15 +6,9 @@ import numpy as np
 from qiskit import QuantumCircuit, QuantumRegister
 from qiskit.quantum_info import Statevector
 
-from quantum_state_prep import (
-    build_oracle,
-    build_state_prep_circuit,
-    build_amplified_circuit,
-    compute_expected_state,
-    optimal_iterations,
-    prepare_state,
-    state_fidelity,
-)
+from quantum_state_prep import build_oracle
+from quantum_state_prep import compute_expected_state, optimal_iterations, prepare_state, state_fidelity
+
 
 FIDELITY_THRESHOLD = 0.99
 
