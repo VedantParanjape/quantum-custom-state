@@ -15,7 +15,6 @@ FIDELITY_THRESHOLD = 0.99
 
 #helpers
 def verify_oracle(n, m, values):
-    """Verify oracle maps |x⟩|0⟩ → |x⟩|values[x]⟩ for all x."""
     oracle = build_oracle(n, m, values)
     x_reg = QuantumRegister(n, "x")
     val_reg = QuantumRegister(m, "v")
@@ -31,7 +30,6 @@ def verify_oracle(n, m, values):
         result = max(probs, key=probs.get)
         assert probs[result] > 0.999, f"Not pure for x={x}"
 
-        # Parse: val is the high bits, x is the low bits
         val_out = int(result[:m], 2)
         x_out = int(result[m:], 2)
         if x_out != x or val_out != values[x]:
@@ -40,7 +38,6 @@ def verify_oracle(n, m, values):
 
 
 def check_state_prep(n, m, a, p, label=""):
-    """Prepare state and check fidelity against expected."""
     result = prepare_state(n, m, a, p)
     expected = compute_expected_state(n, m, a, p)
     target = compute_target_state(n, m, a, p)
@@ -60,21 +57,21 @@ def test_oracle():
     print("=== Oracle Tests ===")
     ok = True
 
-    # n=2, m=2
+    #n=2, m=2
     for values in [[0, 1, 2, 3], [3, 2, 1, 0], [0, 0, 0, 0], [1, 1, 1, 1]]:
         passed, msg = verify_oracle(2, 2, values)
         if not passed:
             print(f"  FAIL oracle n=2 m=2 values={values}: {msg}")
             ok = False
 
-    # n=1, m=3
+    #n=1, m=3
     for values in [[0, 7], [5, 3], [0, 0]]:
         passed, msg = verify_oracle(1, 3, values)
         if not passed:
             print(f"  FAIL oracle n=1 m=3 values={values}: {msg}")
             ok = False
 
-    # n=3, m=2
+    #n=3, m=2
     values = [0, 1, 2, 3, 3, 2, 1, 0]
     passed, msg = verify_oracle(3, 2, values)
     if not passed:
@@ -140,7 +137,7 @@ def test_boundary():
     ok &= passed
     target_fids.append(tfid)
 
-    # Single non-zero with phase
+    #Single non-zero with phase
     a = [0, 0, 3, 0]
     p = [0, 0, 5, 0]
     passed, fid, tfid = check_state_prep(2, 3, a, p, "single with phase")

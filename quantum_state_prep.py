@@ -6,7 +6,7 @@ from qiskit.quantum_info import Statevector
 
 def build_oracle(n, m, values):
     """
-    Build an oracle circuit: |x⟩|0⟩ → |x⟩|values[x]⟩.
+    Build an oracle circuit: |x⟩|0⟩ -> |x⟩|values[x]⟩.
 
     n: number of address qubits (2^n entries)
     m: number of value qubits (values in [0, 2^m - 1])
@@ -105,9 +105,9 @@ def build_amplified_circuit(n, m, oracle_a, oracle_p, num_iterations):
     qc.compose(A, qubits=all_qubits, inplace=True)
 
     if num_iterations > 0:
-        # S_f: phase oracle marking flag=|1⟩ via Z gate
+        #S_f: phase oracle marking flag=|1⟩ via Z gate
         oracle_sf = QuantumCircuit(total)
-        oracle_sf.z(total - 1)  # flag is the last qubit
+        oracle_sf.z(total - 1)
 
         grover_op = GroverOperator(
             oracle=oracle_sf,
@@ -156,7 +156,6 @@ def compute_target_state(n, m, a, p):
 
 
 def state_fidelity(state1, state2):
-    """Compute fidelity |⟨ψ1|ψ2⟩|² between two normalized states."""
     return abs(np.dot(state1.conj(), state2))**2
 
 
