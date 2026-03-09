@@ -1,4 +1,4 @@
-# Quantum Full Adder
+# Quantum Custom State
 
 ## What it does
 
